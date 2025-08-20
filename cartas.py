@@ -1,61 +1,27 @@
-import random
+# cartas.py
 
 class Monstruo:
-    """
-    Representa a una carta de monstruo en el juego.
-    """
-    def __init__(self, nombre, tipo, ataque, defensa):
+    def __init__(self, nombre, tipo, ataque, defensa, imagen_path):
         self.nombre = nombre
         self.tipo = tipo
         self.ataque = ataque
         self.defensa = defensa
         self.posicion = 'ataque'
-        self.has_attacked = False
+        self.imagen_path = imagen_path  # NUEVO: Atributo para la ruta de la imagen
 
-    def __repr__(self):
-        return f'{self.nombre} ({self.tipo}) - ATK:{self.ataque} DEF:{self.defensa}'
+    def cambiar_posicion(self):
+        if self.posicion == 'ataque':
+            self.posicion = 'defensa'
+            print(f"{self.nombre} ha cambiado a posición de defensa.")
+        else:
+            self.posicion = 'ataque'
+            print(f"{self.nombre} ha cambiado a posición de ataque.")
 
-class Jugador:
-    """
-    Representa a un jugador en el juego.
-    """
-    def __init__(self, nombre, mazo):
-        self.nombre = nombre
-        self.puntos_vida = 30
-        self.mazo = mazo
-        self.mano = []
-        self.campo = []
-        self.descartes = []
+    def __str__(self):
+        return (f"Monstruo: {self.nombre} (Tipo: {self.tipo})\n"
+                f"  Ataque: {self.ataque}\n"
+                f"  Defensa: {self.defensa}\n"
+                f"  Posición: {self.posicion}")
 
-    def robar_carta(self):
-        """
-        Roba una carta del mazo y la añade a la mano.
-        """
-        if self.mazo:
-            carta_robada = self.mazo.pop(0)
-            self.mano.append(carta_robada)
-            print(f'{self.nombre} robó {carta_robada.nombre}.')
-            if len(self.mano) > 5:
-                print(f'La mano de {self.nombre} está llena. ¡Debes descartar una carta!')
-                descartada = self.mano.pop()
-                self.descartes.append(descartada)
-                print(f'{self.nombre} descartó {descartada.nombre}.')
-
-    def invocar_monstruo(self, indice_carta, posicion):
-        """
-        Invoca un monstruo de la mano al campo.
-        'indice_carta' es el índice de la carta en la mano del jugador.
-        """
-        if not (0 <= indice_carta < len(self.mano)):
-            print("Índice de carta no válido.")
-            return False
-        
-        if len(self.campo) >= 3:
-            print("No se puede invocar más monstruos. El campo está lleno.")
-            return False
-
-        monstruo_a_invocar = self.mano.pop(indice_carta)
-        monstruo_a_invocar.posicion = posicion
-        self.campo.append(monstruo_a_invocar)
-        print(f'{self.nombre} invocó a {monstruo_a_invocar.nombre} en posición de {posicion}.')
-        return True
+    def mostrar_info(self):
+        print(self)
