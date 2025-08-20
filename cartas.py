@@ -9,7 +9,8 @@ class Monstruo:
         self.tipo = tipo
         self.ataque = ataque
         self.defensa = defensa
-        self.posicion = 'ataque'  # 'ataque' o 'defensa'
+        self.posicion = 'ataque'
+        self.has_attacked = False
 
     def __repr__(self):
         return f'{self.nombre} ({self.tipo}) - ATK:{self.ataque} DEF:{self.defensa}'
@@ -36,9 +37,6 @@ class Jugador:
             print(f'{self.nombre} robó {carta_robada.nombre}.')
             if len(self.mano) > 5:
                 print(f'La mano de {self.nombre} está llena. ¡Debes descartar una carta!')
-                # Lógica para descartar:
-                # Por ahora, simplemente eliminaremos la última carta robada para simular el descarte.
-                # Más adelante, podrías pedir al jugador que elija.
                 descartada = self.mano.pop()
                 self.descartes.append(descartada)
                 print(f'{self.nombre} descartó {descartada.nombre}.')

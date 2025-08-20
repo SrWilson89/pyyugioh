@@ -1,11 +1,8 @@
 import tkinter as tk
-from cartas import Monstruo, Jugador
 import random
+from cartas import Monstruo, Jugador
 
 def inicializar_mazos():
-    """
-    Función para crear y devolver una lista de todos los mazos.
-    """
     mazo_fuego = [
         Monstruo('Dragón de la Llama', 'Fuego', 40, 30),
         Monstruo('Fénix de las Cenizas', 'Fuego', 35, 25),
@@ -154,26 +151,7 @@ def inicializar_mazos():
 
     return mazos_disponibles
 
-def mostrar_estado_juego(jugador1, jugador2):
-    """
-    Función para mostrar el estado actual del juego.
-    """
-    print("\n" + "="*40)
-    print(f"Estado de {jugador1.nombre} (PV: {jugador1.puntos_vida})")
-    print(f"Mano: {[c.nombre for c in jugador1.mano]}")
-    print(f"Campo: {jugador1.campo}")
-    
-    print("\n" + "-"*40)
-    
-    print(f"Estado de {jugador2.nombre} (PV: {jugador2.puntos_vida})")
-    print(f"Campo: {jugador2.campo}") # No mostramos la mano de la IA
-    print("="*40 + "\n")
-
-# --- Clase Juego Mejorada con Interacción ---
 class Juego:
-    """
-    Clase principal que gestiona el flujo de la partida.
-    """
     def __init__(self, jugador1, jugador2):
         self.jugador_actual = jugador1
         self.oponente = jugador2
@@ -190,122 +168,69 @@ class Juego:
     def cambiar_turno(self):
         self.jugador_actual, self.oponente = self.oponente, self.jugador_actual
         self.turno += 1
-        print(f"\n--- Comienza el Turno {self.turno}: {self.jugador_actual.nombre} ---")
 
     def fase_robo(self):
-        print("Fase de Robo:")
         self.jugador_actual.robar_carta()
 
-    def fase_invocacion(self):
-        print("\nFase de Invocación:")
-        if self.jugador_actual.nombre != "IA" and self.jugador_actual.mano:
-            print("Cartas en tu mano:")
-            for i, carta in enumerate(self.jugador_actual.mano):
-                print(f"  [{i}] {carta.nombre} (ATK:{carta.ataque} DEF:{carta.defensa})")
-            
-            eleccion_str = input("Elige el número de la carta que quieres invocar (o 'no' para no invocar): ")
-            if eleccion_str.lower() == 'no':
-                print("No has invocado un monstruo.")
-                return
-
-            try:
-                indice_carta = int(eleccion_str)
-                posicion_elegida = input("Elige la posición ('ataque' o 'defensa'): ").lower()
-                
-                if posicion_elegida not in ['ataque', 'defensa']:
-                    print("Posición no válida. Por favor, elige 'ataque' o 'defensa'.")
-                    return
-                
+    def fase_invocacion(self, indice_carta=None, posicion_elegida=None):
+        if self.jugador_actual.nombre != "IA":
+            if indice_carta is not None and posicion_elegida:
                 self.jugador_actual.invocar_monstruo(indice_carta, posicion_elegida)
-
-            except (ValueError, IndexError):
-                print("Entrada no válida. No se invocó ningún monstruo.")
-        
         elif len(self.jugador_actual.campo) < 3:
-            # Lógica de IA simple
             if self.jugador_actual.mano:
                 carta_a_invocar = self.jugador_actual.mano[0]
                 posicion_elegida = random.choice(['ataque', 'defensa'])
                 self.jugador_actual.invocar_monstruo(0, posicion_elegida)
-
-    def fase_batalla(self):
-        print("\nFase de Batalla:")
-        monstruos_atacantes = [m for m in self.jugador_actual.campo if m.posicion == 'ataque']
-        
-        if not monstruos_atacantes:
-            print("No hay monstruos en posición de ataque para atacar.")
-            return
-
-        if self.jugador_actual.nombre != "IA":
-            if not self.oponente.campo:
-                confirmacion = input("¿Quieres realizar un ataque directo? (si/no): ")
-                if confirmacion.lower() == 'si':
-                    for monstruo_atacante in monstruos_atacantes:
-                        self.resolver_ataque(monstruo_atacante, None)
-            else:
-                for monstruo_atacante in monstruos_atacantes:
-                    print(f"-> {monstruo_atacante.nombre} (ATK:{monstruo_atacante.ataque}) puede atacar.")
-                    
-                    opciones_oponente = [m for m in self.oponente.campo]
-                    print("Monstruos en el campo del oponente:")
-                    for i, m in enumerate(opciones_oponente):
-                        print(f"  [{i}] {m.nombre} (POSICIÓN:{m.posicion} - ATK:{m.ataque} DEF:{m.defensa})")
-                    
-                    eleccion_str = input("Elige el número del monstruo a atacar (o 'no' para no atacar con este monstruo): ")
-                    if eleccion_str.lower() != 'no':
-                        try:
-                            indice_defensor = int(eleccion_str)
-                            if 0 <= indice_defensor < len(opciones_oponente):
-                                monstruo_defensor = opciones_oponente[indice_defensor]
-                                self.resolver_ataque(monstruo_atacante, monstruo_defensor)
-                            else:
-                                print("Opción no válida.")
-                        except ValueError:
-                            print("Entrada no válida.")
-        else: # Lógica para la IA
+    
+    def fase_batalla(self, atacante=None, defensor=None):
+        if self.jugador_actual.nombre == "IA":
+            monstruos_atacantes = [m for m in self.jugador_actual.campo if m.posicion == 'ataque' and not m.has_attacked]
             for monstruo_atacante in monstruos_atacantes:
                 if self.oponente.campo:
                     monstruo_defensor = self.oponente.campo[0]
                     self.resolver_ataque(monstruo_atacante, monstruo_defensor)
                 else:
                     self.resolver_ataque(monstruo_atacante, None)
+                monstruo_atacante.has_attacked = True
+        else:
+            if atacante is not None:
+                self.resolver_ataque(atacante, defensor)
+                atacante.has_attacked = True
 
     def resolver_ataque(self, atacante, defensor):
-        """Función auxiliar para la lógica de combate."""
-        print(f"-> {atacante.nombre} se prepara para atacar.")
+        app.log(f"-> {atacante.nombre} (ATK: {atacante.ataque} DEF: {atacante.defensa}) se prepara para atacar.")
         
         if defensor is None:
-            # Ataque Directo
-            print(f"  > ¡Ataque directo a {self.oponente.nombre}!")
+            app.log(f"  > ¡Ataque directo a {self.oponente.nombre}!")
             self.oponente.puntos_vida -= atacante.ataque
-            print(f"  > {atacante.ataque} PV de daño. PV restantes: {self.oponente.puntos_vida}")
+            app.log(f"  > {atacante.ataque} PV de daño. PV restantes: {self.oponente.puntos_vida}")
             return
 
-        print(f"  > ¡{atacante.nombre} ataca a {defensor.nombre}!")
+        app.log(f"  > ¡{atacante.nombre} ataca a {defensor.nombre}!")
         
         dano_duplicado = 1
         if self.tabla_afinidades[atacante.tipo]['ventaja'] == defensor.tipo:
             dano_duplicado = 2
-            print(f"  > ¡Ataque efectivo! {atacante.tipo} tiene ventaja sobre {defensor.tipo}.")
+            app.log(f"  > ¡Ataque efectivo! {atacante.tipo} tiene ventaja sobre {defensor.tipo}.")
 
         if defensor.posicion == 'ataque':
             dano_final = (atacante.ataque - defensor.ataque) * dano_duplicado
             
             if dano_final > 0:
-                print(f"  > {atacante.nombre} destruye a {defensor.nombre}.")
+                app.log(f"  > {atacante.nombre} destruye a {defensor.nombre}.")
                 self.oponente.campo.remove(defensor)
                 self.oponente.descartes.append(defensor)
                 self.oponente.puntos_vida -= dano_final
-                print(f"  > Daño a PV de {self.oponente.nombre}: {dano_final}. PV restantes: {self.oponente.puntos_vida}")
+                app.log(f"  > Daño a PV de {self.oponente.nombre}: {dano_final}. PV restantes: {self.oponente.puntos_vida}")
             elif dano_final < 0:
                 dano_propio = abs(dano_final)
-                print(f"  > {defensor.nombre} destruye a {atacante.nombre}.")
+                app.log(f"  > {defensor.nombre} destruye a {atacante.nombre}.")
                 self.jugador_actual.campo.remove(atacante)
                 self.jugador_actual.descartes.append(atacante)
                 self.jugador_actual.puntos_vida -= dano_propio
-                print(f"  > Daño a PV de {self.jugador_actual.nombre}: {dano_propio}. PV restantes: {self.jugador_actual.puntos_vida}")
+                app.log(f"  > Daño a PV de {self.jugador_actual.nombre}: {dano_propio}. PV restantes: {self.jugador_actual.puntos_vida}")
             else:
-                print("  > Ambos monstruos tienen el mismo ataque. Se destruyen mutuamente.")
+                app.log("  > Ambos monstruos tienen el mismo ataque. Se destruyen mutuamente.")
                 self.jugador_actual.campo.remove(atacante)
                 self.jugador_actual.descartes.append(atacante)
                 self.oponente.campo.remove(defensor)
@@ -315,156 +240,237 @@ class Juego:
             dano_defensa = (atacante.ataque - defensor.defensa) * dano_duplicado
 
             if dano_defensa > 0:
-                print(f"  > {atacante.nombre} ataca al monstruo en defensa y lo destruye.")
+                app.log(f"  > {atacante.nombre} ataca al monstruo en defensa y lo destruye.")
                 self.oponente.campo.remove(defensor)
                 self.oponente.descartes.append(defensor)
-                print("  > No hay daño a los puntos de vida del oponente.")
+                app.log("  > No hay daño a los puntos de vida del oponente.")
             elif dano_defensa < 0:
-                print(f"  > El ataque no es suficiente. {defensor.nombre} resiste el ataque.")
+                app.log(f"  > El ataque no es suficiente. {defensor.nombre} resiste el ataque.")
                 dano_propio_defensa = abs(dano_defensa)
                 self.jugador_actual.puntos_vida -= dano_propio_defensa
-                print(f"  > {defensor.nombre} causó daño de rebote. Daño a PV de {self.jugador_actual.nombre}: {dano_propio_defensa}. PV restantes: {self.jugador_actual.puntos_vida}")
+                app.log(f"  > {defensor.nombre} causó daño de rebote. Daño a PV de {self.jugador_actual.nombre}: {dano_propio_defensa}. PV restantes: {self.jugador_actual.puntos_vida}")
             else:
-                print("  > El ataque es igual a la defensa. El monstruo resiste pero no hay daño de rebote.")
+                app.log("  > El ataque es igual a la defensa. El monstruo resiste pero no hay daño de rebote.")
 
     def verificar_ganador(self):
         if self.jugador_actual.puntos_vida <= 0:
-            print(f"\n¡{self.oponente.nombre} ha ganado el juego!")
+            app.log(f"\n¡{self.oponente.nombre} ha ganado el juego!")
+            app.show_game_over_screen()
             return True
         if self.oponente.puntos_vida <= 0:
-            print(f"\n¡{self.jugador_actual.nombre} ha ganado el juego!")
+            app.log(f"\n¡{self.jugador_actual.nombre} ha ganado el juego!")
+            app.show_game_over_screen()
             return True
         return False
-
-# --- Lógica principal del juego ---
-if __name__ == "__main__":
-    
-    # Preparamos a los jugadores
-    print("--- Guardián de los Elementos ---")
-    mazos = inicializar_mazos()
-    
-    # --- Jugador 1 ---
-    nombre_jugador1 = input("Jugador 1, ¿cuál es tu nombre?: ")
-    print("Mazos disponibles:", list(mazos.keys()))
-    eleccion_mazo1 = input(f'{nombre_jugador1}, elige tu mazo (ej. Fuego): ')
-    while eleccion_mazo1 not in mazos:
-        eleccion_mazo1 = input("Ese mazo no existe. Elige uno de la lista: ")
-    jugador1 = Jugador(nombre_jugador1, mazo=mazos[eleccion_mazo1])
-    random.shuffle(jugador1.mazo)
-    
-    # --- Jugador 2 (IA simple) ---
-    nombre_jugador2 = "IA"
-    mazos_restantes = list(mazos.keys())
-    mazos_restantes.remove(eleccion_mazo1)
-    eleccion_mazo2 = random.choice(mazos_restantes)
-    jugador2 = Jugador(nombre_jugador2, mazo=mazos[eleccion_mazo2])
-    random.shuffle(jugador2.mazo)
-
-    # Robo inicial de 3 cartas
-    for _ in range(3):
-        jugador1.robar_carta()
-        jugador2.robar_carta()
-
-    # Se inicia el objeto juego
-    juego = Juego(jugador1, jugador2)
-    
-    # Bucle principal del juego
-    while not juego.verificar_ganador():
-        mostrar_estado_juego(juego.jugador_actual, juego.oponente)
         
-        # Fases del turno
-        juego.fase_robo()
-        juego.fase_invocacion()
-        juego.fase_batalla()
-
-        # Cambiar el turno y repetir el bucle
-        juego.cambiar_turno()
-        input("Presiona Enter para continuar al siguiente turno...")
-
-# --- Interfaz Gráfica (GUI) ---
 class App(tk.Tk):
-    def __init__(self, juego):
+    def __init__(self):
         super().__init__()
-        self.juego = juego
         self.title("Guardián de los Elementos")
         self.geometry("800x600")
+        self.all_widgets = []
+        self.show_main_menu()
 
-        # Configuración de la interfaz
+    def clear_screen(self):
+        for widget in self.all_widgets:
+            widget.destroy()
+        self.all_widgets.clear()
+        
+    def show_main_menu(self):
+        self.clear_screen()
+        
+        main_menu_frame = tk.Frame(self)
+        main_menu_frame.pack(expand=True)
+        self.all_widgets.append(main_menu_frame)
+
+        label_title = tk.Label(main_menu_frame, text="Guardián de los Elementos", font=("Arial", 24))
+        label_title.pack(pady=20)
+        
+        label_prompt = tk.Label(main_menu_frame, text="Selecciona tu mazo:", font=("Arial", 16))
+        label_prompt.pack(pady=10)
+        
+        mazos = inicializar_mazos()
+        for mazo_nombre in mazos.keys():
+            btn_mazo = tk.Button(main_menu_frame, text=mazo_nombre, command=lambda mazo=mazo_nombre: self.start_game(mazo))
+            btn_mazo.pack(pady=5)
+            
+    def start_game(self, mazo_elegido):
+        self.clear_screen()
+        
+        mazos = inicializar_mazos()
+        
+        jugador1 = Jugador("Jugador", mazo=mazos[mazo_elegido])
+        mazos_restantes = list(mazos.keys())
+        mazos_restantes.remove(mazo_elegido)
+        ia_mazo = random.choice(mazos_restantes)
+        jugador2 = Jugador("IA", mazo=mazos[ia_mazo])
+        
+        random.shuffle(jugador1.mazo)
+        random.shuffle(jugador2.mazo)
+        
+        for _ in range(3):
+            jugador1.robar_carta()
+            jugador2.robar_carta()
+            
+        self.juego = Juego(jugador1, jugador2)
+        
+        self.fase = 'invocacion'
+        self.monstruo_invocando = None
+        
+        self.pv_jugador_var = tk.StringVar(self, value=f"PV: {self.juego.jugador_actual.puntos_vida}")
+        self.pv_oponente_var = tk.StringVar(self, value=f"PV: {self.juego.oponente.puntos_vida}")
+        
         self.crear_widgets()
-        self.actualizar_ui()
-    
+        self.actualizar_interfaz()
+
+        self.log("¡El juego ha comenzado!")
+        self.log(f"Tu mazo es: {mazo_elegido}")
+        self.log(f"El mazo de la IA es: {ia_mazo}")
+        self.log(f"Turno 1: {self.juego.jugador_actual.nombre}")
+        self.log("No puedes atacar en el primer turno. Solo puedes invocar un monstruo.")
+        
     def crear_widgets(self):
-        # Frame principal para contener todo
         main_frame = tk.Frame(self)
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.all_widgets.append(main_frame)
 
-        # Frame del jugador 2 (oponente)
         oponente_frame = tk.LabelFrame(main_frame, text="Oponente (IA)", padx=10, pady=10)
-        oponente_frame.pack(pady=10)
-        self.pv_oponente_label = tk.Label(oponente_frame, text=f"PV: {self.juego.oponente.puntos_vida}")
+        oponente_frame.pack(fill=tk.X, pady=5)
+        self.all_widgets.append(oponente_frame)
+        self.pv_oponente_label = tk.Label(oponente_frame, textvariable=self.pv_oponente_var)
         self.pv_oponente_label.pack()
-        
-        self.campo_oponente_label = tk.Label(oponente_frame, text="Campo: [Monstruos del oponente]")
-        self.campo_oponente_label.pack()
-        
-        # Frame del jugador 1 (humano)
-        jugador_frame = tk.LabelFrame(main_frame, text=self.juego.jugador_actual.nombre, padx=10, pady=10)
-        jugador_frame.pack(pady=20)
-        self.pv_jugador_label = tk.Label(jugador_frame, text=f"PV: {self.juego.jugador_actual.puntos_vida}")
-        self.pv_jugador_label.pack()
-        
-        self.campo_jugador_label = tk.Label(jugador_frame, text="Campo: [Monstruos del jugador]")
-        self.campo_jugador_label.pack()
-        
-        # Botón para simular el turno (reemplazará el input de la consola)
-        self.boton_turno = tk.Button(self, text="Pasar Turno", command=self.siguiente_turno)
-        self.boton_turno.pack(pady=10)
-        
-        # Consola para mensajes del juego
-        self.consola_texto = tk.Text(self, height=10, width=70)
-        self.consola_texto.pack(pady=10)
-        self.consola_texto.insert(tk.END, "¡Bienvenido a Guardián de los Elementos!")
+        self.marco_campo_oponente = tk.Frame(oponente_frame)
+        self.marco_campo_oponente.pack()
 
-    def actualizar_ui(self):
-        # Esta función se encargará de refrescar todos los datos en la GUI
-        self.pv_jugador_label.config(text=f"PV: {self.juego.jugador_actual.puntos_vida}")
-        self.pv_oponente_label.config(text=f"PV: {self.juego.oponente.puntos_vida}")
+        self.consola_texto = tk.Text(main_frame, height=10, width=70)
+        self.consola_texto.pack(pady=10)
+        self.all_widgets.append(self.consola_texto)
+
+        self.btn_pasar_turno = tk.Button(main_frame, text="Pasar Turno", command=self.pasar_turno)
+        self.btn_pasar_turno.pack(pady=5)
+        self.all_widgets.append(self.btn_pasar_turno)
         
-        # Aquí iría la lógica para mostrar las cartas en mano y campo
-        campo_jugador_nombres = [m.nombre for m in self.juego.jugador_actual.campo]
-        self.campo_jugador_label.config(text=f"Campo: {campo_jugador_nombres}")
-        
-        campo_oponente_nombres = [m.nombre for m in self.juego.oponente.campo]
-        self.campo_oponente_label.config(text=f"Campo: {campo_oponente_nombres}")
-    
+        jugador_frame = tk.LabelFrame(main_frame, text=self.juego.jugador_actual.nombre, padx=10, pady=10)
+        jugador_frame.pack(fill=tk.X, pady=5)
+        self.all_widgets.append(jugador_frame)
+        self.pv_jugador_label = tk.Label(jugador_frame, textvariable=self.pv_jugador_var)
+        self.pv_jugador_label.pack()
+        self.marco_campo_jugador = tk.Frame(jugador_frame)
+        self.marco_campo_jugador.pack()
+        self.marco_mano = tk.LabelFrame(jugador_frame, text="Mano")
+        self.marco_mano.pack(pady=5)
+
     def log(self, mensaje):
         self.consola_texto.insert(tk.END, "\n" + mensaje)
-        self.consola_texto.see(tk.END) # Auto-scroll
+        self.consola_texto.see(tk.END)
 
-    def siguiente_turno(self):
-        # Simula un turno completo y actualiza la GUI
+    def actualizar_interfaz(self):
+        self.pv_jugador_var.set(f"PV: {self.juego.jugador_actual.puntos_vida}")
+        self.pv_oponente_var.set(f"PV: {self.juego.oponente.puntos_vida}")
+
+        for widget in self.marco_mano.winfo_children():
+            widget.destroy()
+        if self.fase == 'invocacion':
+            for i, carta in enumerate(self.juego.jugador_actual.mano):
+                btn = tk.Button(self.marco_mano, text=f"{carta.nombre} (ATK: {carta.ataque} DEF: {carta.defensa})", command=lambda idx=i: self.elegir_posicion(idx))
+                btn.pack(side=tk.LEFT, padx=5)
+        elif self.fase == 'elegir_posicion':
+            btn_ataque = tk.Button(self.marco_mano, text="Invocar en Ataque", command=lambda: self.invocar_carta_final('ataque'))
+            btn_ataque.pack(side=tk.LEFT, padx=5)
+            btn_defensa = tk.Button(self.marco_mano, text="Invocar en Defensa", command=lambda: self.invocar_carta_final('defensa'))
+            btn_defensa.pack(side=tk.LEFT, padx=5)
+        else: # Fase de batalla o final de invocación
+             pass
+
+        for widget in self.marco_campo_jugador.winfo_children():
+            widget.destroy()
+        for monstruo in self.juego.jugador_actual.campo:
+            btn = tk.Button(self.marco_campo_jugador, text=f"{monstruo.nombre} ({monstruo.posicion})", command=lambda m=monstruo: self.seleccionar_atacante(m))
+            if self.juego.turno > 1 and monstruo.posicion == 'ataque' and not monstruo.has_attacked:
+                btn.config(state=tk.NORMAL)
+            else:
+                btn.config(state=tk.DISABLED)
+            btn.pack(side=tk.LEFT, padx=5)
+
+        for widget in self.marco_campo_oponente.winfo_children():
+            widget.destroy()
+        for monstruo in self.juego.oponente.campo:
+            lbl = tk.Label(self.marco_campo_oponente, text=f"{monstruo.nombre} ({monstruo.posicion})")
+            lbl.pack(side=tk.LEFT, padx=5)
+    
+    def elegir_posicion(self, indice):
+        self.monstruo_invocando = indice
+        self.fase = 'elegir_posicion'
+        self.actualizar_interfaz()
+
+    def invocar_carta_final(self, posicion):
+        if self.juego.jugador_actual.invocar_monstruo(self.monstruo_invocando, posicion):
+            self.log(f"Has invocado a {self.juego.jugador_actual.campo[-1].nombre} en posición de {posicion}.")
+            if self.juego.turno > 1:
+                self.fase = 'batalla'
+                self.log("Fase de Batalla. Selecciona un monstruo en tu campo para atacar.")
+            else:
+                self.fase = 'final_invocacion'
+                self.log("Primer turno. No puedes atacar. Por favor, pasa el turno.")
+            self.monstruo_invocando = None
+        else:
+            self.log("No se pudo invocar al monstruo.")
+        self.actualizar_interfaz()
+        
+    def seleccionar_atacante(self, monstruo_atacante):
+        if self.juego.turno > 1 and monstruo_atacante.posicion == 'ataque' and not monstruo_atacante.has_attacked:
+            if not self.juego.oponente.campo:
+                self.juego.fase_batalla(atacante=monstruo_atacante, defensor=None)
+            else:
+                defensor = self.juego.oponente.campo[0]
+                self.juego.fase_batalla(atacante=monstruo_atacante, defensor=defensor)
+            
+            self.actualizar_interfaz()
+            if self.juego.verificar_ganador():
+                self.log("¡El juego ha terminado!")
+        elif self.juego.turno == 1:
+            self.log("No puedes atacar en el primer turno.")
+        
+    def pasar_turno(self):
+        for monstruo in self.juego.jugador_actual.campo:
+            monstruo.has_attacked = False
+
+        self.log(f"--- Turno de la IA: {self.juego.oponente.nombre} ---")
+        self.juego.cambiar_turno()
         self.juego.fase_robo()
         self.juego.fase_invocacion()
-        self.juego.fase_batalla()
+
+        if self.juego.turno > 2:
+            self.juego.fase_batalla()
+        else:
+            self.log("La IA no puede atacar en su primer turno.")
+
+        for monstruo in self.juego.oponente.campo:
+            monstruo.has_attacked = False
+
         self.juego.cambiar_turno()
-        self.actualizar_ui()
-        self.log(f"Turno de {self.juego.jugador_actual.nombre}")
+        self.log(f"\n--- Comienza el Turno {self.juego.turno}: {self.juego.jugador_actual.nombre} ---")
+        self.fase = 'invocacion'
+        self.log("Fase de Robo del Jugador.")
+        self.juego.fase_robo()
+        self.actualizar_interfaz()
+        
+        if self.juego.verificar_ganador():
+            self.log("¡El juego ha terminado!")
+            
+    def show_game_over_screen(self):
+        self.btn_pasar_turno.config(state=tk.DISABLED)
+        
+        game_over_frame = tk.LabelFrame(self, text="Fin del juego", padx=10, pady=10)
+        game_over_frame.pack(pady=20)
+        self.all_widgets.append(game_over_frame)
+        
+        btn_reiniciar = tk.Button(game_over_frame, text="Jugar de Nuevo", command=self.show_main_menu)
+        btn_reiniciar.pack(side=tk.LEFT, padx=10)
+        
+        btn_salir = tk.Button(game_over_frame, text="Salir", command=self.destroy)
+        btn_salir.pack(side=tk.RIGHT, padx=10)
 
-# --- Bucle principal ---
 if __name__ == "__main__":
-    
-    # Preparamos a los jugadores
-    mazos = inicializar_mazos()
-    jugador1 = Jugador("Tu", mazo=mazos['Fuego']) # Simplificado para el ejemplo
-    jugador2 = Jugador("IA", mazo=mazos['Agua'])  # Simplificado para el ejemplo
-    random.shuffle(jugador1.mazo)
-    random.shuffle(jugador2.mazo)
-    for _ in range(3):
-        jugador1.robar_carta()
-        jugador2.robar_carta()
-
-    juego = Juego(jugador1, jugador2)
-    
-    # Inicia la aplicación de Tkinter
-    app = App(juego)
+    app = App()
     app.mainloop()
