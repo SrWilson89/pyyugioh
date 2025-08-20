@@ -385,7 +385,7 @@ class App(tk.Tk):
         for widget in self.marco_campo_jugador.winfo_children():
             widget.destroy()
         for monstruo in self.juego.jugador_actual.campo:
-            btn = tk.Button(self.marco_campo_jugador, text=f"{monstruo.nombre} ({monstruo.posicion})", command=lambda m=monstruo: self.seleccionar_atacante(m))
+            btn = tk.Button(self.marco_campo_jugador, text=f"{monstruo.nombre} (ATK: {monstruo.ataque} DEF: {monstruo.defensa}) ({monstruo.posicion})", command=lambda m=monstruo: self.seleccionar_atacante(m))
             if self.juego.turno > 1 and monstruo.posicion == 'ataque' and not monstruo.has_attacked:
                 btn.config(state=tk.NORMAL)
             else:
@@ -395,7 +395,7 @@ class App(tk.Tk):
         for widget in self.marco_campo_oponente.winfo_children():
             widget.destroy()
         for monstruo in self.juego.oponente.campo:
-            lbl = tk.Label(self.marco_campo_oponente, text=f"{monstruo.nombre} ({monstruo.posicion})")
+            lbl = tk.Label(self.marco_campo_oponente, text=f"{monstruo.nombre} (ATK: {monstruo.ataque} DEF: {monstruo.defensa}) ({monstruo.posicion})")
             lbl.pack(side=tk.LEFT, padx=5)
     
     def elegir_posicion(self, indice):
